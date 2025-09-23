@@ -24,6 +24,6 @@ rank 38 / 667
 
 ### Blockchain
 
-- [MixNTwist](link) - 352 (20 solves)
+- [MixNTwist](https://github.com/EnchLolz/ImaginaryCTF-CrewCTF-25/blob/main/MixNTwist.md) - 352 (20 solves)
 
 *participated on behalf of plaid parliament of pwning
