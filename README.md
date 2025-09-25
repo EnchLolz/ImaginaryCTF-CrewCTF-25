@@ -20,7 +20,7 @@ rank 38 / 667
 
 ### Misc
 
-- [pyf❤️ck](link) - 362 (19 solves)
+- [pyf❤️ck](https://github.com/EnchLolz/ImaginaryCTF-CrewCTF-25/blob/main/pyf❤️ck.md) - 362 (19 solves)
 
 ### Blockchain
 
