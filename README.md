@@ -11,7 +11,7 @@ rank 26 / 1414
 
 ### Misc (Technically a Blockchain Challenge)
 
-- [PBJ](link) - 345 (44 solves)
+- [PBJ](https://github.com/EnchLolz/ImaginaryCTF-CrewCTF-25/blob/main/PBJ.md) - 345 (44 solves)
 
 
 
