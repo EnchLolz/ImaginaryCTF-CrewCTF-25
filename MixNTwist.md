@@ -67,7 +67,7 @@ function __function_selector__() public nonPayable {
 }
 ```
 
-We can ignore most of the top code defining function `0x328` and just focus on the the 5 different contracts in function selector as hinted by the flavor text. We will now examine each of these contracts seperately.
+We can ignore most of the top code defining function `0x328` and just focus on the the 5 different contracts in function selector as hinted to by the flavor text. We will now examine each of these contracts seperately.
 
 ## Contract 0x328(0, '0x608060405234801561000...');
 

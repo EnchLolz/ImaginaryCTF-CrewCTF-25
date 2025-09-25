@@ -172,7 +172,7 @@ Now, there was one feeling going through my mind after spending hours on this pr
 
 of course we must convert it to `p41n` to get our final flag.
 
-Note that all the characters also fall within the original set, and also that the lowercase `p` also shows up in the intial `set(open(FLAG))` but is not yet used in the flag prefix.
+Note that all the characters also fall within the original set, and also that the lowercase `p` shows up in the intial `set(open(FLAG))` but is not yet used in the flag prefix.
 
 
 ## Flag

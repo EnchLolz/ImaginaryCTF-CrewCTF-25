@@ -84,7 +84,7 @@ def calcPayment(flag, flagCoin, eth):
     return l+w3.to_wei(0.2, 'ether')
 ```
 
-We can also calculate the value for when we sell the flagcoins as well locally:
+We can also calculate the value for when we sell the flagcoins locally:
 
 ```py
 # if i buy with income
